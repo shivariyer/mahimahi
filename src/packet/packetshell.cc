@@ -82,6 +82,10 @@ void PacketShell<FerryQueueType>::start_uplink( const string & shell_prefix,
             /* dnsmasq doesn't distinguish between UDP and TCP forwarding nameservers,
                so use a DNSProxy that listens on the same UDP and TCP port */
 
+            // Shiva: sockets are created here and attached/bound to
+            // the file descriptors (TUN device) defined
+            // before. Change the type of socket to non-blocking so
+            // that tun.read() may be read in a loop.
             UDPSocket dns_udp_listener;
             dns_udp_listener.bind( ingress_addr() );
 
@@ -172,6 +176,14 @@ int PacketShell<FerryQueueType>::Ferry::loop( FerryQueueType & ferry_queue,
     /* tun device gets datagram -> read it -> give to ferry */
     add_simple_input_handler( tun, 
                               [&] () {
+                                  // Shiva: this handler is called on
+                                  // line 63 in poller.cc (the
+                                  // callback() function). As Keith
+                                  // suggested, the read might be more
+                                  // efficient here if we make the TUN
+                                  // device non-blocking and read
+                                  // multiple packets instead of just
+                                  // one packet
                                   ferry_queue.read_packet( tun.read() );
                                   return ResultType::Continue;
                               } );

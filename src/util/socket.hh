@@ -49,6 +49,7 @@ public:
 class UDPSocket : public Socket
 {
 public:
+    // Shiva: maybe need to add the non-blocking flag here
     UDPSocket() : Socket( AF_INET, SOCK_DGRAM ) {}
 
     /* receive datagram and where it came from */
@@ -69,6 +70,8 @@ class TCPSocket : public Socket
 {
 protected:
     /* constructor used by accept() and SecureSocket() */
+
+    // Shiva: maybe need to add the non-blocking flag here
     TCPSocket( FileDescriptor && fd ) : Socket( std::move( fd ), AF_INET, SOCK_STREAM ) {}
 
 public:

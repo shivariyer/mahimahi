@@ -56,6 +56,10 @@ Poller::Result Poller::poll( const int & timeout_ms )
             /* we only want to call callback if revents includes
                the event we asked for */
             const auto count_before = actions_.at( i ).service_count();
+
+            // Shiva/Rohail: This is where the read() or write()
+            // callback function is called inside read_packet() or
+            // write_packet() (ref: line 175 in packet/packetshell.cc)
             auto result = actions_.at( i ).callback();
 
             switch ( result.result ) {
