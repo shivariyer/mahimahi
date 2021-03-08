@@ -20,6 +20,7 @@ private:
 
     unsigned int next_delivery_;
     std::vector<uint64_t> schedule_;
+    std::vector<uint64_t> num_packets_;
     uint64_t base_timestamp_;
 
     std::unique_ptr<AbstractPacketQueue> packet_queue_;
@@ -35,6 +36,7 @@ private:
     bool finished_;
 
     uint64_t next_delivery_time( void ) const;
+    uint64_t next_delivery_packets( void ) const;
 
     void use_a_delivery_opportunity( void );
 

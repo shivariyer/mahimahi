@@ -17,6 +17,7 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
                       const string & command_line )
     : next_delivery_( 0 ),
       schedule_(),
+      num_packets_(),
       base_timestamp_( timestamp() ),
       packet_queue_( move( packet_queue ) ),
       packet_in_transit_( "", 0 ),
@@ -43,8 +44,11 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
         if ( line.empty() ) {
             throw runtime_error( filename + ": invalid empty line" );
         }
-
-        const uint64_t ms = myatoi( line );
+        /*
+            Modify to handle trace file with format: timestamp number_of_packets
+        */
+        const uint64_t ms = myatoi( line.substr(0, line.find(' ')) );
+        const uint64_t num_packets = myatoi( line.substr(line.find(' '), line.find('\n')) );
 
         if ( not schedule_.empty() ) {
             if ( ms < schedule_.back() ) {
@@ -53,6 +57,7 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
         }
 
         schedule_.emplace_back( ms );
+        num_packets_.emplace_back( num_packets );
     }
 
     if ( schedule_.empty() ) {
@@ -107,8 +112,7 @@ void LinkQueue::record_arrival( const uint64_t arrival_time, const size_t pkt_si
 {
     /* log it */
     if ( log_ ) {
-        *log_ << arrival_time << " + " << pkt_size
-              << '~' << packet_queue_->size_packets() << ' ' << packet_queue_.size_bytes() << endl;
+        *log_ << arrival_time << " + " << pkt_size << endl;
     }
 
     /* meter it */
@@ -121,8 +125,7 @@ void LinkQueue::record_drop( const uint64_t time, const size_t pkts_dropped, con
 {
     /* log it */
     if ( log_ ) {
-        *log_ << time << " d " << pkts_dropped << " " << bytes_dropped
-              << '~' << packet_queue_->size_packets() << ' ' << packet_queue_.size_bytes() << endl;
+        *log_ << time << " d " << pkts_dropped << " " << bytes_dropped << endl;
     }
 }
 
@@ -130,8 +133,7 @@ void LinkQueue::record_departure_opportunity( void )
 {
     /* log the delivery opportunity */
     if ( log_ ) {
-        *log_ << next_delivery_time() << " # " << PACKET_SIZE
-              << '~' << packet_queue_->size_packets() << ' ' << packet_queue_.size_bytes() << endl;
+        *log_ << next_delivery_time() << " # " << PACKET_SIZE << endl;
     }
 
     /* meter the delivery opportunity */
@@ -145,8 +147,7 @@ void LinkQueue::record_departure( const uint64_t departure_time, const QueuedPac
     /* log the delivery */
     if ( log_ ) {
         *log_ << departure_time << " - " << packet.contents.size()
-              << " " << departure_time - packet.arrival_time
-              << '~' << packet_queue_->size_packets() << ' ' << packet_queue_.size_bytes() << endl;
+              << " " << departure_time - packet.arrival_time << endl;
     }
 
     /* meter the delivery */
@@ -195,6 +196,15 @@ uint64_t LinkQueue::next_delivery_time( void ) const
     }
 }
 
+uint64_t LinkQueue::next_delivery_packets( void ) const
+{
+    if ( finished_ ) {
+        return -1;
+    } else {
+        return num_packets_.at( next_delivery_ );
+    }
+}
+
 void LinkQueue::use_a_delivery_opportunity( void )
 {
     record_departure_opportunity();
@@ -218,9 +228,10 @@ void LinkQueue::rationalize( const uint64_t now )
 {
     while ( next_delivery_time() <= now ) {
         const uint64_t this_delivery_time = next_delivery_time();
+        const uint64_t this_delivery_packets = next_delivery_packets();
 
         /* burn a delivery opportunity */
-        unsigned int bytes_left_in_this_delivery = PACKET_SIZE;
+        unsigned int bytes_left_in_this_delivery = PACKET_SIZE * this_delivery_packets;
         use_a_delivery_opportunity();
 
         while ( bytes_left_in_this_delivery > 0 ) {
