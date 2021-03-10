@@ -18,11 +18,11 @@ private:
     const static size_t BUFFER_SIZE = 1024 * 1024;
 
 protected:
-    void register_read( void ) { read_count_++; }
     void register_write( void ) { write_count_++; }
-    void set_eof( void ) { eof_ = true; }
 
 public:
+    void register_read( void ) { read_count_++; }
+    void set_eof( void ) { eof_ = true; }
     /* construct from fd number */
     FileDescriptor( const int fd );
 

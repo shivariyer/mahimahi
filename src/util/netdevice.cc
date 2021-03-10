@@ -28,7 +28,7 @@ TunDevice::TunDevice( const string & name,
 
     /* increase txqueuelen from default 500 */
     interface_ioctl( SIOCSIFTXQLEN, name,
-                        [] ( ifreq &ifr ) { ifr.ifr_qlen = 500000; } );
+                        [] ( ifreq &ifr ) { ifr.ifr_qlen = 400000; } );
 
     assign_address( name, addr, peer );
 }

@@ -50,7 +50,7 @@ class UDPSocket : public Socket
 {
 public:
     // Shiva: maybe need to add the non-blocking flag here
-    UDPSocket() : Socket( AF_INET, SOCK_DGRAM ) {}
+    UDPSocket() : Socket( AF_INET, SOCK_DGRAM | SOCK_NONBLOCK) {}
 
     /* receive datagram and where it came from */
     std::pair<Address, std::string> recvfrom( void );
@@ -75,7 +75,7 @@ protected:
     TCPSocket( FileDescriptor && fd ) : Socket( std::move( fd ), AF_INET, SOCK_STREAM ) {}
 
 public:
-    TCPSocket() : Socket( AF_INET, SOCK_STREAM ) {}
+    TCPSocket() : Socket( AF_INET, SOCK_STREAM | SOCK_NONBLOCK) {}
 
     /* mark the socket as listening for incoming connections */
     void listen( const int backlog = 16 );

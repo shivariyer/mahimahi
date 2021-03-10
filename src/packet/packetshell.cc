@@ -17,6 +17,7 @@
 #include "exception.hh"
 #include "bindworkaround.hh"
 #include "config.h"
+#include "fcntl.h"
 
 using namespace std;
 using namespace PollerShortNames;
@@ -174,6 +175,8 @@ int PacketShell<FerryQueueType>::Ferry::loop( FerryQueueType & ferry_queue,
                                               FileDescriptor & sibling )
 {
     /* tun device gets datagram -> read it -> give to ferry */
+    int flags = fcntl(tun.fd_num(), F_GETFL, 0);
+    fcntl(tun.fd_num(), F_SETFL, flags | O_NONBLOCK);
     add_simple_input_handler( tun, 
                               [&] () {
                                   // Shiva: this handler is called on
@@ -184,8 +187,23 @@ int PacketShell<FerryQueueType>::Ferry::loop( FerryQueueType & ferry_queue,
                                   // device non-blocking and read
                                   // multiple packets instead of just
                                   // one packet
-                                  ferry_queue.read_packet( tun.read() );
-                                  return ResultType::Continue;
+                                  const int BUFFSIZE = 32 * 1024;
+                                  ssize_t bytes_read = 0;
+                                  int buffer_size = BUFFSIZE;
+                                  do {
+                                    char *buffer = (char*) malloc(BUFFSIZE * sizeof(char));
+                                    bytes_read = read(tun.fd_num(), buffer, buffer_size);
+                                    if (bytes_read > 0) {
+                                        ferry_queue.read_packet( string(buffer, bytes_read) );
+                                        free(buffer);
+                                        tun.register_read();
+                                    } else if (bytes_read == 0) {
+                                        tun.set_eof();
+                                        break;
+                                    }
+                                  } while(bytes_read >= 0);
+                                  
+                                return ResultType::Continue;
                               } );
 
     /* ferry ready to write datagram -> send to sibling's tun device */
