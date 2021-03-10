@@ -190,18 +190,18 @@ int PacketShell<FerryQueueType>::Ferry::loop( FerryQueueType & ferry_queue,
                                   const int BUFFSIZE = 32 * 1024;
                                   ssize_t bytes_read = 0;
                                   int buffer_size = BUFFSIZE;
+                                  char *buffer = (char*) malloc(BUFFSIZE * sizeof(char));
                                   do {
-                                    char *buffer = (char*) malloc(BUFFSIZE * sizeof(char));
                                     bytes_read = read(tun.fd_num(), buffer, buffer_size);
                                     if (bytes_read > 0) {
                                         ferry_queue.read_packet( string(buffer, bytes_read) );
-                                        free(buffer);
                                         tun.register_read();
                                     } else if (bytes_read == 0) {
                                         tun.set_eof();
                                         break;
                                     }
                                   } while(bytes_read >= 0);
+                                  free(buffer);
                                   
                                 return ResultType::Continue;
                               } );
