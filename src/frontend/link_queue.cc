@@ -112,7 +112,8 @@ void LinkQueue::record_arrival( const uint64_t arrival_time, const size_t pkt_si
 {
     /* log it */
     if ( log_ ) {
-        *log_ << arrival_time << " + " << pkt_size << endl;
+        *log_ << arrival_time << " + " << pkt_size
+              << '~' << packet_queue_->size_packets() << ' ' << packet_queue_->size_bytes() << endl;
     }
 
     /* meter it */
@@ -121,24 +122,26 @@ void LinkQueue::record_arrival( const uint64_t arrival_time, const size_t pkt_si
     }
 }
 
-void LinkQueue::record_drop( const uint64_t time, const size_t pkts_dropped, const size_t bytes_dropped)
+void LinkQueue::record_drop( const uint64_t time, const size_t pkts_dropped, const size_t bytes_dropped )
 {
     /* log it */
     if ( log_ ) {
-        *log_ << time << " d " << pkts_dropped << " " << bytes_dropped << endl;
+        *log_ << time << " d " << pkts_dropped << " " << bytes_dropped
+              << '~' << packet_queue_->size_packets() << ' ' << packet_queue_->size_bytes() << endl;
     }
 }
 
-void LinkQueue::record_departure_opportunity( void )
+void LinkQueue::record_departure_opportunity( const size_t avail_capacity_bytes )
 {
     /* log the delivery opportunity */
     if ( log_ ) {
-        *log_ << next_delivery_time() << " # " << PACKET_SIZE << endl;
+        *log_ << next_delivery_time() << " # " << avail_capacity_bytes
+              << '~' << packet_queue_->size_packets() << ' ' << packet_queue_->size_bytes() << endl;
     }
 
     /* meter the delivery opportunity */
     if ( throughput_graph_ ) {
-        throughput_graph_->add_value_now( 0, PACKET_SIZE );
+        throughput_graph_->add_value_now( 0, avail_capacity_bytes );
     }    
 }
 
@@ -147,7 +150,8 @@ void LinkQueue::record_departure( const uint64_t departure_time, const QueuedPac
     /* log the delivery */
     if ( log_ ) {
         *log_ << departure_time << " - " << packet.contents.size()
-              << " " << departure_time - packet.arrival_time << endl;
+              << " " << departure_time - packet.arrival_time
+              << '~' << packet_queue_->size_packets() << ' ' << packet_queue_->size_bytes() << endl;
     }
 
     /* meter the delivery */
@@ -205,9 +209,9 @@ uint64_t LinkQueue::next_delivery_packets( void ) const
     }
 }
 
-void LinkQueue::use_a_delivery_opportunity( void )
+void LinkQueue::use_a_delivery_opportunity( const size_t avail_capacity_bytes )
 {
-    record_departure_opportunity();
+    record_departure_opportunity( avail_capacity_bytes );
 
     next_delivery_ = (next_delivery_ + 1) % schedule_.size();
 
@@ -232,7 +236,7 @@ void LinkQueue::rationalize( const uint64_t now )
 
         /* burn a delivery opportunity */
         unsigned int bytes_left_in_this_delivery = PACKET_SIZE * this_delivery_packets;
-        use_a_delivery_opportunity();
+        use_a_delivery_opportunity( bytes_left_in_this_delivery );
 
         while ( bytes_left_in_this_delivery > 0 ) {
             if ( not packet_in_transit_bytes_left_ ) {
